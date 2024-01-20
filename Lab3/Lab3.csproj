@@ -7,9 +7,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Markdig" Version="0.34.0" />
-    <PackageReference Include="ScottPlot" Version="5.0.18" />
-  </ItemGroup>
-
 </Project>
