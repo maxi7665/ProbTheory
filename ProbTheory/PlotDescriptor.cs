@@ -20,11 +20,15 @@ namespace Core
                 var segmentFromX = Math.Max(fromX, segment.MinX);
                 var segmentToX = Math.Min(toX, segment.MaxX);
 
-                for (double i = segmentFromX; i <= segmentToX; i += step)
-                {
-                    var coords = new Coordinates(i, segment.Func(i));
+                double x = segmentFromX;
 
-                    ret.Add(i, coords);
+                for (int i = 0; x <= segmentToX ; i++)
+                {
+                    x = segmentFromX + (i * step);
+
+                    var coords = new Coordinates(x, segment.Func(x));
+
+                    ret.Add(x, coords);
                 }
             }
 

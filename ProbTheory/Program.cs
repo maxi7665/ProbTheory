@@ -21,16 +21,16 @@ plotDescriptor.Segments.Add(plotSegment);
 plotDescriptor.Segments.Add(new PlotSegment()
 {
     Func = (x) => 0,
-    MaxX = -0.01
+    MaxX = -0.001
 });
 
 plotDescriptor.Segments.Add(new PlotSegment()
 {
     Func = (x) => 0,
-    MinX = 1.01
+    MinX = 1.001
 });
 
-var values = plotDescriptor.GetCoords(-0.1, 1.1);
+var values = plotDescriptor.GetCoords(-0.1, 1.1, 0.001);
 
 var scatter = myPlot.Add.Scatter(
     values);
