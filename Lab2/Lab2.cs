@@ -1,6 +1,5 @@
 ﻿
 using Core;
-using Lab2.Processing;
 using Markdig;
 using System.Text;
 using System.Web;
@@ -104,7 +103,7 @@ namespace Lab2
             string fileName = BuildBars(segmentStatistics);
 
             markdown.AppendLine(Markdown.ToHtml($"### q = 5"));
-            markdown.AppendLine(BuildTableHtml(segmentStatistics));
+            markdown.AppendLine(BuildSegmentStatTableHtml(segmentStatistics));
 
             markdown.AppendLine(HttpUtility.UrlDecode(Markdown.ToHtml($"![График]({fileName} \"График q = 5\")")));
 
@@ -113,7 +112,7 @@ namespace Lab2
             fileName = BuildBars(segmentStatistics);
 
             markdown.AppendLine(Markdown.ToHtml($"### q = 7"));
-            markdown.AppendLine(BuildTableHtml(segmentStatistics));
+            markdown.AppendLine(BuildSegmentStatTableHtml(segmentStatistics));
             markdown.AppendLine(HttpUtility.UrlDecode(Markdown.ToHtml($"![График]({fileName} \"График q = 7\")")));
 
             var html = markdown.ToString();
@@ -132,33 +131,7 @@ namespace Lab2
             markdown.AppendLine($"+ Ср. кв. откл. {metrics.Sigma}");
 
             return Markdown.ToHtml(markdown.ToString());
-        }
-
-        private static MarkdownPipeline pipeline = new MarkdownPipelineBuilder()
-            .UseAdvancedExtensions()
-            .Build();
-
-        private static string BuildTableHtml(SegmentStatistics segmentStatistics)
-        {
-            var markdown = new StringBuilder();
-
-            markdown.AppendLine("| Номер интервала  | x j  |  x j\\+1 |  n j  |");
-            markdown.AppendLine("|------------------|------|--------|-------|");
-
-            int cnt = 0;
-
-            foreach (var segment in segmentStatistics.Parts)
-            {
-                cnt++;
-
-                markdown.AppendLine($"| {cnt} | {Math.Round(segment.Value.From, 3)} | " +
-                    $"{Math.Round(segment.Value.To, 3)} | {segment.Value.Values.Length} |");
-            }
-
-            markdown.AppendLine($"| Сумма |  |  | {segmentStatistics.ValuesCount} |");
-
-            return Markdown.ToHtml(markdown.ToString(), pipeline);
-        }
+        }              
 
         private static string BuildBars(SegmentStatistics statistics)
         {
@@ -167,8 +140,6 @@ namespace Lab2
             var fileName = Path.GetRandomFileName() + ".png";
 
             fileName = Path.Combine(TMP_DIRECTORY_NAME, fileName);
-
-            fileName.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
             plot.SavePng(fileName, 800, 600);
             return fileName;

@@ -1,8 +1,8 @@
 ﻿using ScottPlot;
 
-namespace Lab2.Processing
+namespace Core
 {
-    internal class PlotBuilder
+    public class PlotBuilder
     {
         public static Plot BuildGistogram(
             SegmentStatistics segmentStatistics)

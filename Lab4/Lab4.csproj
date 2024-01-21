@@ -8,15 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="EPPlus" Version="7.0.7" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\ProbTheory\Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="reportTemplate.xlsx">
+    <None Update="sourceData.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

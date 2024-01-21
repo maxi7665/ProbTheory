@@ -1,4 +1,4 @@
-﻿namespace Lab2.Processing
+﻿namespace Core
 {
     public class SegmentStatisticsPart
     {
@@ -6,6 +6,6 @@
 
         public double To { get; set; }
 
-        public double[] Values { get; set; } = new double[0];
+        public double[] Values { get; set; } = Array.Empty<double>();
     }
 }

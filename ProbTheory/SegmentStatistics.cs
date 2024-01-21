@@ -1,4 +1,4 @@
-﻿namespace Lab2.Processing
+﻿namespace Core
 {
     /// <summary>
     /// эмпирическая статистика для построения гистограммы и вычисления моды

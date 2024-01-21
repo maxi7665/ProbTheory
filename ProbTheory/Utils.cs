@@ -1,4 +1,7 @@
-﻿using System.Diagnostics;
+﻿using Markdig;
+using ScottPlot;
+using System.Diagnostics;
+using System.Text;
 
 namespace Core
 {
@@ -128,6 +131,32 @@ namespace Core
         {
             return Math.Sin(2 * Math.PI * uniformValue1)
                 * Math.Sqrt(-2 * Math.Log(uniformValue2));
+        }
+
+        public static string BuildSegmentStatTableHtml(SegmentStatistics segmentStatistics)
+        {
+            MarkdownPipeline pipeline = new MarkdownPipelineBuilder()
+                .UseAdvancedExtensions()
+                .Build();
+
+            var markdown = new StringBuilder();
+
+            markdown.AppendLine("| Номер интервала  | x j  |  x j\\+1 |  n j  |");
+            markdown.AppendLine("|------------------|------|--------|-------|");
+
+            int cnt = 0;
+
+            foreach (var segment in segmentStatistics.Parts)
+            {
+                cnt++;
+
+                markdown.AppendLine($"| {cnt} | {Math.Round(segment.Value.From, 3)} | " +
+                    $"{Math.Round(segment.Value.To, 3)} | {segment.Value.Values.Length} |");
+            }
+
+            markdown.AppendLine($"| Сумма |  |  | {segmentStatistics.ValuesCount} |");
+
+            return Markdown.ToHtml(markdown.ToString(), pipeline);
         }
     }
 }

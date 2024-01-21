@@ -1,10 +1,6 @@
-﻿using Lab2.Processing;
-using System.Net.Http.Headers;
-using System.Net.Sockets;
-
-namespace Lab2
+﻿namespace Core
 {
-    internal class Metrics
+    public class Metrics
     {
         public static DataSetMetrics CountMetrics(
             double[] values,
@@ -12,12 +8,14 @@ namespace Lab2
         {
             var ret = new DataSetMetrics();
 
+            ret.N = values.Length;
+
             ret.R = values.Max() - values.Min();
 
             ret.ExpectValue = values.Average();
 
             var sortedValues = values.ToList();
-            
+
             sortedValues.Sort();
 
             if (sortedValues.Count % 2 == 0)
@@ -49,12 +47,20 @@ namespace Lab2
                 if (mainSegmentValues.Length != 0)
                 {
                     ret.Mode = mainSegmentValues.Order().ToArray()[mainSegmentValues.Length / 2];
-                }                                   
+                }
             }
 
             ret.D = values
                 .Select(v => Math.Pow(v - ret.ExpectValue, 2))
                 .Sum() / (values.Length - 1);
+
+            ret.Skewness = GetCentralMoment(values, 3) / 
+                Math.Pow(ret.Sigma, 3);
+
+            ret.ExcessKurtosis = (GetCentralMoment(values, 4) /
+                Math.Pow(ret.Sigma, 4)) - 3;
+
+            ret.StandardError = ret.Sigma / Math.Sqrt(values.Length);
 
             return ret;
         }
@@ -71,7 +77,7 @@ namespace Lab2
 
             var ret = new SegmentStatistics();
 
-            for (int i = 1; i <= q; i ++)
+            for (int i = 1; i <= q; i++)
             {
                 var from = min + (i - 1) * delta;
                 var to = min + i * delta;
@@ -82,7 +88,7 @@ namespace Lab2
                 part.To = to;
 
                 part.Values = values
-                    .Where(v => v >= from 
+                    .Where(v => v >= from
                     && (v < to
                     || v == to
                     && i == q))
@@ -95,6 +101,29 @@ namespace Lab2
             ret.To = max;
 
             return ret;
+        }
+
+        /// <summary>
+        /// Получить n-ый центральный момент
+        /// </summary>
+        /// <param name="values"></param>
+        /// <param name="number"></param>
+        /// <returns></returns>
+        public static double GetCentralMoment(
+            double[] values, 
+            double number)
+        {
+            decimal sum = 0;
+            decimal count = values.Length;
+
+            var expect = values.Average();
+
+            foreach (var value in values)
+            {
+                sum += (decimal)Math.Pow((value - expect), number);
+            }
+
+            return (double)(sum / count);
         }
     }
 }
