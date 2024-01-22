@@ -1,0 +1,427 @@
+1. ./Lab3.cs
+﻿using Core;
+using Lab3.Processing;
+using System.Net.Http.Headers;
+using static Core.Utils;
+
+namespace Lab3
+{
+    internal class Lab3
+    {
+        private const int VARIANT = 2;
+        private const int C = VARIANT;
+
+        private static readonly int[] sampleCounts = [15, 30, 100, 1000];
+
+        private const string REPORT_FILENAME = "reportTemplate.xlsx";
+
+        static async Task Main(string[] args)
+        {
+            // подготовка набора данных
+            await PrepareDataSet(sampleCounts, _generators);
+
+            var valuesParameters = await ProcessData(
+                sampleCounts, 
+                _generators.Count);
+
+            CreateReport(valuesParameters);
+        }
+
+        private static void CreateReport(ValuesParameters[] parameters)
+        {
+            var newFileName = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.xlsx";
+
+            using (var excelBuilder = new ExcelReportBuilder(
+                REPORT_FILENAME,
+                newFileName))
+            {
+                foreach (var param in parameters)
+                {
+                    excelBuilder.AppendReportLine(param);
+                }
+
+                excelBuilder.SaveReport();
+            }
+
+            Utils.OpenPath(newFileName);
+        }
+
+        /// <summary>
+        /// Считывание и обработка данных
+        /// </summary>
+        /// <param name="counts"></param>
+        /// <param name="generatorsNum"></param>
+        /// <returns></returns>
+        private async static Task<ValuesParameters[]> ProcessData(int[] counts, int generatorsNum)
+        {
+            var ret = new List<ValuesParameters>();
+
+            foreach (var count in counts)
+            {
+                for (int i = 0; i < generatorsNum; i++)
+                {
+                    var fileName = BuildDataFileName(count, i + 1);
+
+                    var values = await ReadValues(fileName);
+
+                    var parameters = new ValuesParameters(
+                        values, 
+                        values.Length / 4, 
+                        C);
+
+                    ret.Add(parameters);
+                }
+            }
+
+            return ret.ToArray();
+        }
+
+        /// <summary>
+        /// Генераторы последовательностей согласно заданию
+        /// </summary>
+        private static List<ValuesGenerator> _generators = new()
+        {
+            new (            
+                count => PrepareGaussData(
+                    count,
+                    0,
+                    (double) C / 100)
+            ),
+            new (            
+                count => PrepareGaussData(
+                    count,
+                    0,
+                    (double) C / 20)
+            ),
+            new (            
+                count => PrepareUniformData(
+                    count,
+                    (double) - C / 100,
+                    (double) C / 100)
+            ),
+            new (            
+                count => PrepareUniformData(
+                    count,
+                    (double) - C / 20,
+                    (double) C / 20)
+            )
+        };
+
+        /// <summary>
+        /// Подговка набора данных при необходимости
+        /// </summary>
+        /// <param name="counts">Список кол-ва</param>
+        /// <param name="generators"></param>
+        /// <returns></returns>
+        private static async Task PrepareDataSet(
+            int[] counts,
+            List<ValuesGenerator> generators)
+        {
+            foreach (var count in counts)
+            {
+                for (int i = 0; i < generators.Count; i++)
+                {
+                    ValuesGenerator generator = generators[i];
+
+                    string fileName = BuildDataFileName(count, i + 1);
+
+                    if (!File.Exists(fileName))
+                    {
+                        // генерация помехи
+                        double[] values = generator.Generator!(count);
+
+                        // добавление к помехе коэффициента
+                        for (int j = 0; j < values.Length; j++)
+                        {
+                            values[j] += C;
+                        }
+
+                        await SaveValues(fileName, values);
+                    }
+                }
+            }
+        }
+
+        private static string BuildDataFileName(int count, int order)
+        {
+            return $"{order}_{count}_values.txt";
+        }
+    }
+}
+
+2. ./Processing/EstimateErrorEngine.cs
+﻿namespace Lab3.Processing
+{
+    public class EstimateErrorEngine
+    {
+
+        /// <summary>
+        /// Среднее значение - статистическое мат ожидание
+        /// </summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public static double Average(IEnumerable<double> values)
+        {
+            decimal sum = 0;
+
+            int cnt = 0;
+
+            foreach (var value in values)
+            {
+                sum += (decimal)value;
+
+                cnt++;
+            }
+
+            sum /= cnt;
+
+            return (double)sum;
+        }
+
+        /// <summary>
+        /// Полусумма
+        /// </summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public static double HalfSum(IEnumerable<double> values)
+        {
+            return (values.Max() + values.Min()) / 2;
+        }
+
+        /// <summary>
+        /// Медиана
+        /// </summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public static double Median(IEnumerable<double> values)
+        {
+            var cnt = values.Count();
+
+            values = values.Order();
+
+            if (cnt % 2 == 0)
+            {
+                return (values.ElementAt(cnt / 2) + values.ElementAt(cnt / 2 - 1)) / 2;
+            }
+            else
+            {
+                return values.ElementAt(cnt / 2);
+            }
+        }
+
+        /// <summary>
+        /// Среднее значение с отбросом K членов
+        /// </summary>
+        /// <param name="values"></param>
+        /// <param name="k"></param>
+        /// <returns></returns>
+        /// <exception cref="ApplicationException"></exception>
+        public static double SegmentAverage(
+            IEnumerable<double> values, 
+            int k)
+        {
+            var cnt = values.Count();
+
+            values = values.Order();
+
+            if (k >= cnt / 2)
+            {
+                throw new ApplicationException("k greater or equal than N/2");
+            }
+
+            return Average(values.Skip(k).Take(cnt - 2 * k));
+        }
+
+        /// <summary>
+        /// Дисперсия
+        /// </summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public static double Dispersion (IEnumerable<double> values)
+        {
+            var cnt = values.Count();
+
+            decimal sum = 0;
+            double average = Average(values);
+
+            foreach (var value in values)
+            {
+                var difference = value - average;
+
+                var quad = Math.Pow(difference, 2);
+
+                sum += (decimal)quad;
+            }
+
+            var ret = sum / (cnt - 1);
+
+            return (double)ret;
+        }
+
+        /// <summary>
+        /// Относительная ошибка оценивания
+        /// </summary>
+        public static double RelativeEstimationError(double c, double x) =>
+            Math.Abs(c - x) / c;
+    }
+}
+
+3. ./Processing/ExcelReportBuilder.cs
+﻿using OfficeOpenXml;
+using System.Runtime.CompilerServices;
+
+namespace Lab3.Processing
+{
+    internal class ExcelReportBuilder : IDisposable
+    {
+        public ExcelPackage _excelPackage;
+        private bool _disposedValue;
+
+        private int _cnt = 0;
+        private int _sampleBlockSize;
+
+        private const int HEADER_SIZE = 2;
+        private const int BLOCK_HEADER_SIZE = 2;
+
+        private const int START_COLUMN = 1;
+        
+
+        public ExcelReportBuilder(
+            string templateFileName,
+            string newFileName,
+            int sampleBlockSize = 4)
+        {
+            if (!File.Exists(templateFileName))
+            {
+                throw new FileNotFoundException(templateFileName);
+            }
+
+            _excelPackage = new ExcelPackage(
+                new FileInfo(newFileName), 
+                new FileInfo(templateFileName));
+
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+            _sampleBlockSize = sampleBlockSize;
+        }
+
+        private int GetRowIdx(int count)
+        {
+            return HEADER_SIZE 
+                + BLOCK_HEADER_SIZE * ((count - 1) / _sampleBlockSize + 1) 
+                + count;
+        }
+
+        public void AppendReportLine(ValuesParameters parameters)
+        {
+            var row = GetRowIdx(_cnt + 1);
+            var column = START_COLUMN;
+
+            var worksheet = _excelPackage.Workbook.Worksheets[0];
+
+            worksheet.Cells[row, column + 1].Value = parameters.Average;
+            worksheet.Cells[row, column + 2].Value = parameters.HalfSum;
+            worksheet.Cells[row, column + 3].Value = parameters.Median;
+            worksheet.Cells[row, column + 4].Value = parameters.SegmentMedian;
+
+            worksheet.Cells[row, column + 5].Value = parameters.AverageError;
+            worksheet.Cells[row, column + 6].Value = parameters.HalfSumError;
+            worksheet.Cells[row, column + 7].Value = parameters.MedianError;
+            worksheet.Cells[row, column + 8].Value = parameters.SegmentMedianError;
+
+            worksheet.Cells[row, column + 1, row, column + 8].Style.Numberformat.Format = "0.000000";
+
+            worksheet.Cells[row, column + 1, row, column + 8].AutoFitColumns();
+
+            _cnt++;
+        }
+
+        public void SaveReport()
+        {
+            _excelPackage.Save();
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    _excelPackage.Dispose();
+                }
+
+                _disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Не изменяйте этот код. Разместите код очистки в методе "Dispose(bool disposing)".
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+    }
+}
+
+4. ./Processing/ValuesGenerator.cs
+﻿namespace Lab3.Processing
+{
+    internal class ValuesGenerator
+    {
+        public ValuesGenerator(Func<int, double[]> generator)
+        {
+            Generator = generator;
+        }
+
+        public Func<int, double[]> Generator { get; } 
+    }
+}
+
+5. ./Processing/ValuesParameters.cs
+﻿namespace Lab3.Processing
+{
+    internal class ValuesParameters
+    {
+        private double[] _values;
+
+        public ValuesParameters(
+            double[] values, 
+            int k,
+            int c)
+        {
+            this._values = values;
+
+            Average = EstimateErrorEngine.Average(_values);
+            HalfSum = EstimateErrorEngine.HalfSum(_values);
+            Median = EstimateErrorEngine.Median(_values);
+            SegmentMedian = EstimateErrorEngine.SegmentAverage(_values, k);           
+
+            AverageError = EstimateErrorEngine.RelativeEstimationError(c, Average);
+            HalfSumError = EstimateErrorEngine.RelativeEstimationError(c, HalfSum);
+            MedianError = EstimateErrorEngine.RelativeEstimationError(c, Median);
+            SegmentMedianError = EstimateErrorEngine.RelativeEstimationError(c, SegmentMedian);
+
+            Dispersion = EstimateErrorEngine.Dispersion(_values);
+        }
+
+        public double Average { get; } 
+
+        public double HalfSum { get; } 
+
+        public double Median { get; }
+
+        public double SegmentMedian { get; }
+
+        public double AverageError { get; }
+
+        public double HalfSumError { get; }
+
+        public double MedianError { get; }
+
+        public double SegmentMedianError { get; }
+
+        public double Dispersion { get; }
+
+    }
+}
+

@@ -8,10 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="EPPlus" Version="7.0.7" />
-    <PackageReference Include="Markdig" Version="0.34.0" />
-    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="ScottPlot" Version="5.0.18" />
+    <ProjectReference Include="..\ProbTheory\Core.csproj" />
   </ItemGroup>
 
 </Project>
