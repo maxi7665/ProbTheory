@@ -6,7 +6,7 @@ using System.Web;
 
 namespace Lab5
 {
-    internal class Program
+    internal class Lab5
     {
         private const string REPORT_NAME = "report5.html";
         private const string PLOT_NAME = "plot.png";
@@ -182,7 +182,7 @@ namespace Lab5
                 sum += Math.Pow(value - values[i], 2);
             }
 
-            return sum / orig.Length - 1;
+            return sum / (orig.Length - 1);
         }
     }
 }
